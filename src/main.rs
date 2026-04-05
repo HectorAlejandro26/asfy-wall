@@ -1,61 +1,78 @@
-use rand::seq::SliceRandom;
-use std::env;
-use std::fs;
+mod args;
+mod cache;
+mod config;
+mod engine;
+
+use crate::args::Args;
+use crate::config::ConfigManager;
+use crate::engine::WallyEngine;
+use anyhow::{Context, Result, anyhow};
+use clap::Parser;
 use std::path::PathBuf;
-use std::process::{Command, exit};
 
-fn main() {
-    // 1. Leer argumentos de la terminal
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Falta el directorio. Uso: {} <ruta_a_directorio>", args[0]);
-        exit(1);
-    }
-    let wallpaper_dir = &args[1];
+const APP_NAME: &str = "wally_rust";
 
-    // 2. Escanear el directorio buscando archivos
-    let paths: Vec<PathBuf> = fs::read_dir(wallpaper_dir)
-        .unwrap_or_else(|_| {
-            eprintln!("No pude leer el directorio: {}", wallpaper_dir);
-            exit(1);
+fn main() -> Result<()> {
+    let args = Args::parse();
+
+    let config_manager = ConfigManager::new()?;
+    let config = config_manager.load()?;
+
+    // Args > Config
+    let images_dir = args
+        .images_dir
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| {
+            let p = &config.images_dir;
+            if !p.as_os_str().is_empty() {
+                Some(p.clone())
+            } else {
+                None
+            }
         })
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        // Solo archivos
-        .filter(|path| path.is_file())
-        .collect();
+        .ok_or_else(|| anyhow::anyhow!("Error: No images directory provided"))?;
 
-    if paths.is_empty() {
-        eprintln!("Directorio vacío o sin archivos válidos. Aburrido.");
-        exit(1);
-    }
+    let images_dir_str = images_dir.to_string_lossy();
+    let expanded_dir = shellexpand::full(&images_dir_str)
+        .with_context(|| anyhow!("Failed to expand path: {}", images_dir_str))?
+        .into_owned();
+    let images_dir = PathBuf::from(expanded_dir);
 
-    // 3. Obtener aleatorio
-    let mut rng = rand::thread_rng();
-    let chosen_wallpaper = paths.choose(&mut rng).unwrap();
+    let order_by = args.order_by.unwrap_or(config.order_by);
 
-    let chosen_transition = "wipe";
+    let reverse = if let Some(r) = args.reverse {
+        r
+    } else {
+        config.reverse
+    };
 
-    println!(
-        "Pintando: {:?} con transición '{}'",
-        chosen_wallpaper.file_name().unwrap(),
-        chosen_transition
-    );
+    let external_args = if args.external_args.is_empty() {
+        config.external_args
+    } else {
+        args.external_args
+    };
 
-    // 4. Ejecutar awww
-    let status = Command::new("awww")
-        .arg("img")
-        .arg(chosen_wallpaper)
-        .arg("--transition-type")
-        .arg(chosen_transition)
-        // Opcional: ajustar velocidad de transición
-        .arg("--transition-step")
-        .arg("5")
-        .status()
-        .expect("Error al invocar awww. ¿Seguro que awww-daemon está corriendo?");
+    let dry_run = args.dry_run;
 
-    if !status.success() {
-        eprintln!("awww ejecutó, pero devolvió un error. Revisa tus archivos.");
-        exit(1);
-    }
+    let images_list = engine::list_images(&images_dir)?;
+
+    let cache_manager = cache::CacheManager::new(images_dir.clone(), images_list)?;
+    let (current_cache, cache_changed) = cache_manager.load()?;
+
+    let reorder = cache_changed || args.reorder;
+
+    let mut engine = WallyEngine::new(
+        images_dir,
+        order_by,
+        reverse,
+        external_args,
+        current_cache,
+        cache_manager,
+        dry_run,
+    )?;
+
+    engine.run(reorder, args.set_index)?;
+
+    Ok(())
 }
