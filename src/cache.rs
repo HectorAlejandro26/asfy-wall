@@ -1,5 +1,5 @@
-use crate::APP_NAME;
-use anyhow::{Context, Ok, Result};
+use crate::constants::{APP_NAME, ORG_NAME};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -21,6 +21,7 @@ impl CacheManager {
     pub fn new(images_dir: PathBuf, images: Vec<String>) -> Result<Self> {
         let cache_dir = dirs::cache_dir()
             .unwrap_or_else(|| std::env::current_dir().unwrap())
+            .join(ORG_NAME)
             .join(APP_NAME);
 
         if !cache_dir.exists() {
@@ -56,7 +57,6 @@ impl CacheManager {
 
         let mut is_dirty = false;
 
-        // Clonamos y ordenamos para comparar contenido real, no el orden
         let mut cached_sorted = cache.images.clone();
         cached_sorted.sort();
         let mut fresh_sorted = self.images.clone();

@@ -1,5 +1,5 @@
-use crate::APP_NAME;
 use crate::config::OrderBy;
+use crate::constants::APP_NAME;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -7,13 +7,10 @@ use clap::Parser;
     name = APP_NAME, 
     version, 
     about = "A blazing fast wallpaper manager and execution engine.", 
-    long_about = "Wally is a tool that manages, caches, and cycles through your image directories, delegating the heavy lifting to the 'awww' command."
+    long_about = "asfy-wall is a tool that manages, caches, and cycles through your image directories, delegating the heavy lifting to the 'awww' command."
 )]
 pub struct Args {
-    #[arg(
-        long,
-        help = "Force a reorder of the images based on the 'order_by' setting"
-    )]
+    #[arg(long, help = "Force a reorder of the images based on the 'order_by' setting")]
     pub reorder: bool,
 
     #[arg(
@@ -34,28 +31,15 @@ pub struct Args {
     )]
     pub reverse: Option<bool>,
 
-    #[arg(
-        short,
-        long,
-        help = "Override the base directory where images are stored"
-    )]
+    #[arg(short, long, help = "Override the base directory where images are stored")]
     pub images_dir: Option<String>,
 
-    #[arg(
-        long,
-        help = "Preview what would be executed without actually calling 'awww'"
-    )]
+    #[arg(long, help = "Preview what would be executed without actually calling 'awww'")]
     pub dry_run: bool,
 
-    #[arg(
-        long,
-        help = "Jump directly to a specific image index in the cache"
-    )]
+    #[arg(long, help = "Jump directly to a specific image index in the cache")]
     pub set_index: Option<usize>,
 
-    #[arg(
-        last = true,
-        help = "Arguments to pass directly to the external command (awww)"
-    )]
+    #[arg(last = true, help = "Arguments to pass directly to the external command (awww)")]
     pub external_args: Vec<String>,
 }

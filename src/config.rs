@@ -1,15 +1,14 @@
-use anyhow::{Context, Ok, Result};
+use crate::constants::{APP_NAME, ORG_NAME};
+use anyhow::{Context, Result};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-use crate::APP_NAME;
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default, ValueEnum)]
 pub enum OrderBy {
     #[default]
-    None, // Random,
+    None, // Random
     Name,
     CreatedAt,
     ModifiedAt,
@@ -18,13 +17,10 @@ pub enum OrderBy {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     pub images_dir: PathBuf,
-
     #[serde(default)]
     pub order_by: OrderBy,
-
     #[serde(default)]
     pub reverse: bool,
-
     #[serde(default)]
     pub external_args: Vec<String>,
 }
@@ -53,6 +49,7 @@ impl ConfigManager {
     pub fn new() -> Result<Self> {
         let config_dir = dirs::config_dir()
             .unwrap_or_else(|| std::env::current_dir().unwrap())
+            .join(ORG_NAME)
             .join(APP_NAME);
 
         if !config_dir.exists() {
