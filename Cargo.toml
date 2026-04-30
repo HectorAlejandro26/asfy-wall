@@ -1,7 +1,11 @@
 [package]
-name = "wally_rust"
-version = "0.2.0"
+name = "asfy-wall"
+version = "0.2.1"
 edition = "2024"
+
+[[bin]]
+name = "asfywall"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.102"
